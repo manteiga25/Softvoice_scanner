@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    tools:context=".Database_window"
+    tools:showIn="@layout/activity_database_window">
+
+
+    <TableLayout
+        android:id="@+id/data_grid"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/black"
+        android:layout_margin="40dp">
+
+        <TableRow
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/black">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="4"
+                android:gravity="center_horizontal"
+                android:padding="10sp"
+                android:text="Prodct id"
+                android:textColor="@color/white"
+                android:textSize="14sp"></TextView>
+
+            <!-- Adiciona uma linha divisória no meio -->
+            <View
+                android:layout_width="1dp"
+                android:layout_height="match_parent"
+                android:background="@android:color/white" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="4"
+                android:gravity="center_horizontal"
+                android:padding="10sp"
+                android:text="Quantity"
+                android:textColor="@color/white"
+                android:textSize="14sp">
+            </TextView>
+
+        </TableRow>
+
+        <!-- Adiciona uma linha branca para dividir os itens -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@android:color/white" />
+
+
+        <!-- Adicione aqui os próximos TableRow(s) -->
+
+    </TableLayout>
+
+</androidx.core.widget.NestedScrollView>
+
+

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Cor de fundo do Spinner -->
+   <!-- <solid android:color="#FFFFFF" /> Defina a cor de fundo do Spinner -->
+
+    <!-- Defina a borda -->
+    <stroke
+        android:width="2dp"
+        android:color="@color/black" /> <!-- Cor da borda -->
+
+    <!-- Defina os cantos arredondados (opcional) -->
+    <corners android:radius="8dp" />
+</shape>

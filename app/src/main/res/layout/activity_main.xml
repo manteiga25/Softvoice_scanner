@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_start"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.1" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_end"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintHorizontal_weight="0"
+        app:layout_constraintVertical_weight="0"
+        app:layout_constraintGuide_percent="0.9" />
+
+    <!-- Toolbar -->
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/Product_code_layout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@id/imageView"
+        app:layout_constraintStart_toStartOf="@+id/guideline_start"
+        app:layout_constraintEnd_toEndOf="@+id/guideline_end"
+        app:layout_constraintHorizontal_bias="0.5"
+        android:hint="Enter product code..." >
+
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/Product_code"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/corner_radious"
+            android:hint=""
+            android:textSize="15dp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+     <EditText
+         android:id="@+id/Number_products"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+         android:layout_marginStart="100dp"
+         android:layout_marginTop="14dp"
+         android:layout_marginEnd="101dp"
+         android:layout_marginBottom="50dp"
+         android:ems="10"
+         android:hint="Number of items"
+         android:inputType="numberSigned"
+         app:layout_constraintBottom_toBottomOf="parent"
+         app:layout_constraintEnd_toEndOf="parent"
+         app:layout_constraintHorizontal_bias="0.0"
+         app:layout_constraintStart_toStartOf="parent"
+         app:layout_constraintTop_toBottomOf="@+id/Product_code_layout"
+         app:layout_constraintVertical_bias="0.0" />
+
+     <Button
+         android:id="@+id/btn_camera"
+         android:layout_width="208dp"
+         android:layout_height="55dp"
+         android:layout_centerInParent="true"
+         android:layout_marginStart="125dp"
+         android:layout_marginTop="75dp"
+         android:layout_marginEnd="184dp"
+         android:layout_marginBottom="211dp"
+         android:background="?attr/selectableItemBackground"
+         android:text="Scan Barcode"
+         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+         android:textColor="#956CEF"
+         android:textColorLink="#C9B6E9"
+         android:textSize="20sp"
+         app:icon="@android:drawable/ic_menu_camera"
+         app:iconTint="#9267E7"
+         app:iconTintMode="add"
+         app:layout_constraintBottom_toBottomOf="parent"
+         app:layout_constraintEnd_toEndOf="parent"
+         app:layout_constraintHorizontal_bias="0.223"
+         app:layout_constraintStart_toStartOf="parent"
+         app:layout_constraintTop_toBottomOf="@+id/Number_products"
+         app:layout_constraintVertical_bias="0.0" />
+
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="272dp"
+        android:layout_height="193dp"
+        android:layout_marginStart="5dp"
+        android:layout_marginTop="63dp"
+        android:layout_marginEnd="5dp"
+        android:layout_marginBottom="12dp"
+        app:layout_constraintBottom_toTopOf="@+id/Product_code_layout"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.496"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"
+        app:srcCompat="@drawable/_2eefb_920fba6d276342b1a50f3e8fc91c68f9_mv2" />
+
+    <Button
+         android:id="@+id/relase_data"
+         android:layout_width="wrap_content"
+         android:layout_height="wrap_content"
+         android:layout_marginStart="158dp"
+         android:layout_marginTop="13dp"
+         android:layout_marginEnd="162dp"
+         android:layout_marginBottom="15dp"
+         android:text="Add product manual"
+         app:layout_constraintBottom_toTopOf="@+id/btn_camera"
+         app:layout_constraintEnd_toEndOf="parent"
+         app:layout_constraintStart_toStartOf="parent"
+         app:layout_constraintTop_toBottomOf="@+id/Number_products" />
+
+
+
+ </androidx.constraintlayout.widget.ConstraintLayout>
+

@@ -1,0 +1,23 @@
+<!-- res/menu/menu_main.xml -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+        <item
+            android:id="@+id/database"
+            android:title="See database"
+            android:orderInCategory="1"
+            android:showAsAction="never" />
+        <item
+            android:id="@+id/NewDatabase"
+            android:title="New database"
+            android:orderInCategory="2"
+            android:showAsAction="never" />
+        <item
+            android:id="@+id/DelDatabase"
+            android:title="Delete database"
+            android:orderInCategory="3"
+            android:showAsAction="never" />
+        <item
+            android:id="@+id/SwiDatabase"
+            android:title="Switch database"
+            android:orderInCategory="4"
+            android:showAsAction="never" />
+</menu>
