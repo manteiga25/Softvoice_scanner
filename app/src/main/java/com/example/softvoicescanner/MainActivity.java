@@ -1,5 +1,5 @@
 package com.example.softvoicescanner;
-
+// Esse codigo foi criado pelo samuel, mikail não buga meu codigo ok?
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
