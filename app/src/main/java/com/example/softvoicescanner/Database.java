@@ -18,6 +18,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Database extends SQLiteOpenHelper {
@@ -156,7 +157,6 @@ public class Database extends SQLiteOpenHelper {
             final boolean exists = tabelaExiste(name);
             if (exists) { return 2; }
             database.execSQL("CREATE TABLE IF NOT EXISTS " + name + " (product_id TEXT PRIMARY KEY NOT NULL, quantidade BIGINT NOT NULL);");
-            addData("androidDB........", 1);
         }
         catch (Exception e) {
             return 0;
@@ -172,7 +172,34 @@ public class Database extends SQLiteOpenHelper {
         return database.insert(defaultDB, null, values);
     }
 
-    public int check_id(String prod_id, long quantidade, Context context) {
+    public boolean insertAllData(String[] prod_id, long[] quantidade) {
+        database.beginTransaction();
+        try {
+            for (int i = 0; i < prod_id.length; i++) {
+                ContentValues values = new ContentValues();
+                values.put("product_id", prod_id[i]);
+                values.put("quantidade", quantidade[i]);
+
+                long result = database.insert(defaultDB, null, values);
+
+                // Verifica se a inserção falhou
+                if (result == -1) {
+                    throw new Exception("Falha ao inserir dados na linha " + i);
+                }
+                else {
+                    System.out.println("success to insert all data");
+                }
+            }
+            database.setTransactionSuccessful();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            database.endTransaction();
+        }
+        return true;
+    }
+
+        public int check_id(String prod_id, long quantidade, Context context) {
         String[] columns = {"product_id", "quantidade"};
         String[] param = {prod_id};
         Cursor cursor = database.query(defaultDB, columns, "product_id = ?", param, null, null, null);
@@ -258,7 +285,8 @@ public class Database extends SQLiteOpenHelper {
         }
         return true;
     }
-    public void deleteData(String product_id) {
-        database.delete(defaultDB, "product_id = ?", new String[]{String.valueOf(product_id)});
+
+    public int deleteData(String product_id) {
+        return database.delete(defaultDB, "product_id = ?", new String[]{String.valueOf(product_id)});
     }
 }

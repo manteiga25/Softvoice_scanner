@@ -12,6 +12,7 @@ android {
         targetSdk = 28
         versionCode = 1
         versionName = "1.0"
+        multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -42,6 +43,9 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.barcode)
     implementation(libs.drawer)
+    implementation(libs.mainXls)
+    implementation(libs.excel)
+    implementation(libs.barCode)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

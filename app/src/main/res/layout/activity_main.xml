@@ -73,30 +73,30 @@
          app:layout_constraintTop_toBottomOf="@+id/Product_code_layout"
          app:layout_constraintVertical_bias="0.0" />
 
-     <Button
-         android:id="@+id/btn_camera"
-         android:layout_width="208dp"
-         android:layout_height="55dp"
-         android:layout_centerInParent="true"
-         android:layout_marginStart="125dp"
-         android:layout_marginTop="75dp"
-         android:layout_marginEnd="184dp"
-         android:layout_marginBottom="211dp"
-         android:background="?attr/selectableItemBackground"
-         android:text="Scan Barcode"
-         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-         android:textColor="#956CEF"
-         android:textColorLink="#C9B6E9"
-         android:textSize="20sp"
-         app:icon="@android:drawable/ic_menu_camera"
-         app:iconTint="#9267E7"
-         app:iconTintMode="add"
-         app:layout_constraintBottom_toBottomOf="parent"
-         app:layout_constraintEnd_toEndOf="parent"
-         app:layout_constraintHorizontal_bias="0.223"
-         app:layout_constraintStart_toStartOf="parent"
-         app:layout_constraintTop_toBottomOf="@+id/Number_products"
-         app:layout_constraintVertical_bias="0.0" />
+    <Button
+        android:id="@+id/btn_camera"
+        android:layout_width="208dp"
+        android:layout_height="55dp"
+        android:layout_centerInParent="true"
+        android:layout_marginStart="125dp"
+        android:layout_marginTop="75dp"
+        android:layout_marginEnd="184dp"
+        android:layout_marginBottom="211dp"
+        android:background="?attr/selectableItemBackground"
+        android:text="Scan Barcode"
+        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+        android:textColor="#956CEF"
+        android:textColorLink="#C9B6E9"
+        android:textSize="20sp"
+        app:icon="@android:drawable/ic_menu_camera"
+        app:iconTint="#9267E7"
+        app:iconTintMode="add"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.223"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/Number_products"
+        app:layout_constraintVertical_bias="0.0" />
 
     <ImageView
         android:id="@+id/imageView"
@@ -128,7 +128,20 @@
          app:layout_constraintStart_toStartOf="parent"
          app:layout_constraintTop_toBottomOf="@+id/Number_products" />
 
+    <ImageButton
+        android:id="@+id/imageButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="25dp"
+        android:layout_marginTop="550dp"
+        android:layout_marginEnd="2dp"
+        android:layout_marginBottom="421dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/btn_camera"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/Product_code_layout"
+        app:srcCompat="@drawable/baseline_flash_off_24" />
 
 
- </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
 

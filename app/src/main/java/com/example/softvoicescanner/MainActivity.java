@@ -5,25 +5,24 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
-import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
-import android.widget.SpinnerAdapter;
 import android.widget.TextView;
 import android.widget.EditText;
 
 import androidx.activity.EdgeToEdge;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -37,21 +36,13 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.material.navigation.NavigationView;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
-import com.journeyapps.barcodescanner.camera.PreviewScalingStrategy;
 
-import android.content.ContentValues;
-import android.content.Context;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
-import android.database.Cursor;
 import android.widget.Toast;
-import android.util.DisplayMetrics;
 
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 
-import com.example.softvoicescanner.Database;
+import java.io.Serializable;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -62,7 +53,19 @@ public class MainActivity extends AppCompatActivity {
     NavigationView navebar;
     ActionBarDrawerToggle drawer_togle;
 
+    private boolean light = false;
+
     String defaultDB;
+
+    private void flash(ImageButton button) {
+        light = !light;
+        if (light) {
+            button.setImageResource(R.drawable.baseline_flash_on_24);
+        }
+        else {
+            button.setImageResource(R.drawable.baseline_flash_off_24);
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -81,10 +84,12 @@ public class MainActivity extends AppCompatActivity {
                 noDatabase("Database not selected");
                 return super.onOptionsItemSelected(item);
             }
+
             //    DB.close();
             Intent intent = new Intent(MainActivity.this, Database_window.class);
             //    intent.putExtra("extra_data_key", DB);
             intent.putExtra("databaseName", DB.defaultDB);
+           // intent.putExtra("widget", wait_win);
             startActivity(intent);
             // Código para lidar com a ação do botão de configurações
             return true;
@@ -287,13 +292,22 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
 
         ImageView imagem_logo = findViewById(R.id.imageView);
-      //  imagem_logo.setLayoutParams(new ConstraintLayout.LayoutParams((int) (screenWidth * 0.50), (int) (screenHeight * 0.50)));
+        //  imagem_logo.setLayoutParams(new ConstraintLayout.LayoutParams((int) (screenWidth * 0.50), (int) (screenHeight * 0.50)));
         ConstraintLayout.LayoutParams params_image = (ConstraintLayout.LayoutParams) imagem_logo.getLayoutParams();
 
         imagem_logo.setLayoutParams(params_image);
 
         // Configurar a Toolbar como a ActionBar da Activity
         setSupportActionBar(toolbar);
+
+        ImageButton flashButton = findViewById(R.id.imageButton);
+
+        flashButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                flash(flashButton); // Alternar o estado da lanterna
+            }
+        });
 
       //  getSupportActionBar().setIcon(R.drawable.ic_toolbar_icon);
 
@@ -303,6 +317,7 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
         Button scan_button = findViewById(R.id.btn_camera);
+        scan_button.setBackgroundColor(Color.WHITE);
         scan_button.setOnClickListener(v->scanCode());
 
         prod_id = findViewById(R.id.Product_code);
@@ -326,6 +341,9 @@ public class MainActivity extends AppCompatActivity {
         options.setBeepEnabled(true);
         options.setOrientationLocked(true);
         options.setCaptureActivity(CaptureAct.class);
+        options.setBarcodeImageEnabled(true);
+        options.setTorchEnabled(light);
+
         barLaunch.launch(options);
     }
 
