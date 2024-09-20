@@ -45,7 +45,6 @@ dependencies {
     implementation(libs.drawer)
     implementation(libs.mainXls)
     implementation(libs.excel)
-    implementation(libs.barCode)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

@@ -9,17 +9,11 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.widget.Toast;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FilePermission;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 public class Database extends SQLiteOpenHelper {
 
@@ -170,6 +164,10 @@ public class Database extends SQLiteOpenHelper {
         values.put("quantidade", quantidade);
 
         return database.insert(defaultDB, null, values);
+    }
+
+    public Cursor fetchFilterData(final String id) {
+        return database.rawQuery("Select * from " + defaultDB + " WHERE product_id LIKE ?", new String[]{"%" + id + "%"});
     }
 
     public boolean insertAllData(String[] prod_id, long[] quantidade) {

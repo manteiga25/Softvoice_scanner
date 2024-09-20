@@ -1,9 +1,5 @@
 package com.example.softvoicescanner;
 
-import static com.google.zxing.integration.android.IntentIntegrator.REQUEST_CODE;
-import static java.lang.Long.parseLong;
-
-import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -11,17 +7,10 @@ import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
-import com.google.android.material.appbar.CollapsingToolbarLayout;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.snackbar.Snackbar;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
 import androidx.appcompat.widget.Toolbar;
-import androidx.core.view.WindowInsetsCompat;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -33,6 +22,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -44,15 +34,14 @@ import android.net.Uri;
 import android.Manifest;
 
 import com.example.softvoicescanner.databinding.ActivityDatabaseWindowBinding;
-import com.example.softvoicescanner.Database;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import com.example.softvoicescanner.ExcelDB;
 
 public class Database_window extends AppCompatActivity {
 
@@ -61,27 +50,39 @@ public class Database_window extends AppCompatActivity {
     private ArrayList<String> data;  // Supõe-se que data já foi inicializado com dados
     private TableLayout tabela;
     private TextView[] productId, quantity;
-    private ExecutorService executorService;
-    private Handler mainHandler;
-   // private TableRow[] newRow;
+    private ExecutorService executorService, executorServiceExcel;
+    private Handler mainHandler, excelHandler;
+    private String FinalFileName;
+    private String currentFilter = "", LastFilter = "";
+    private EditText search;
+
+    public interface NameCallback {
+        void onNameEntered(String fileName);
+    }
 
     protected ArrayList<String> fetch_data() {
-        Cursor cursor = DB.fetchAllDataCursor();
+     //   Cursor cursor = DB.fetchAllDataCursor();
+        if (data != null) {
+            data.clear();
+        }
+        Cursor cursor;
+        if (currentFilter.isEmpty()) {
+            System.out.println("fdhgiutrh");
+            cursor = DB.fetchAllDataCursor();
+        }
+        else {
+            cursor = DB.fetchFilterData(currentFilter);
+        }
         ArrayList<String> list = new ArrayList<String>();
-        if (cursor == null) {
+        if (cursor == null || cursor.getCount() == 0) {
             System.out.println("cursor is null");
-            return list;
+            return null;
         }
         if (cursor.moveToFirst()) {
             do { list.add(cursor.getString(0));
                 list.add(cursor.getString(1));
             }
             while (cursor.moveToNext());
-             /*   list.add(cursor.getString(0));
-                list.add(cursor.getString(1));
-                System.out.println("prod " + list.get(idx) + "\n" + "quant " + list.get(idx+1) + "\n");
-                idx += 2;
-            } */
         }
         cursor.close();
         return list;
@@ -99,12 +100,8 @@ public class Database_window extends AppCompatActivity {
         final String tmp_quantity = data.get(index+1);
 
         // Preenche os campos com dados existentes
-        //   if (index < data.size()) {
         editProductId.setText(tmp_product_id);
-        //     if (index + 1 < data.size()) {
         editQuantity.setText(tmp_quantity);
-        //   }
-        // }
         new AlertDialog.Builder(this)
                 .setTitle("Edit Item")
                 .setView(dialogView)
@@ -129,11 +126,6 @@ public class Database_window extends AppCompatActivity {
                             else if (tmp_product_id.equals(new_tmp_product_id) && new Long(tmp_quantity) == new_tmp_quantity) {
                                 Toast.makeText(Database_window.this, "Without changes", Toast.LENGTH_SHORT).show();
                             } else {
-                            // Atualiza os dados com os novos valores
-                            //   data.set(index, editProductId.getText().toString());
-                            //      if (index + 1 < data.size()) {
-                            //   data.set(index + 1, editQuantity.getText().toString());
-                            //    }
 
                             new AsyncTask<Void, Void, Boolean>() {
                                 @Override
@@ -141,13 +133,6 @@ public class Database_window extends AppCompatActivity {
                                     // Atualizar o banco de dados em segundo plano
                                     return DB.updateData(tmp_product_id, editProductId.getText().toString(), new Long(editQuantity.getText().toString())) != -1;
                                 }
-
-                  /*      if (DB.updateData(data.get(index), editProductId.getText().toString(), new Long(editQuantity.getText().toString())) == -1) {
-                            Toast.makeText(Database_window.this, "Error to update database", Toast.LENGTH_LONG).show();
-                        }
-                        else {
-                            Toast.makeText(Database_window.this, "Sucess to update database", Toast.LENGTH_LONG).show();
-                        } */
 
                                 @Override
                                 protected void onPostExecute(Boolean success) {
@@ -179,12 +164,11 @@ public class Database_window extends AppCompatActivity {
 
         }
 
-        private androidx.appcompat.app.AlertDialog init_win() {
+        private androidx.appcompat.app.AlertDialog init_win(final String title, final String message) {
             androidx.appcompat.app.AlertDialog.Builder wait_win = new androidx.appcompat.app.AlertDialog.Builder(Database_window.this);
-            wait_win.setTitle("Connecting to database");
-            wait_win.setMessage("Fetching data.");
-           // wait_win.setCancelable(false);
-          //  wait_win.show();
+            wait_win.setTitle(title);
+            wait_win.setCancelable(false);
+            wait_win.setMessage(message);
 
             View customLayout = LayoutInflater.from(this).inflate(R.layout.progresslayout, null);
             wait_win.setView(customLayout);
@@ -193,6 +177,23 @@ public class Database_window extends AppCompatActivity {
             androidx.appcompat.app.AlertDialog progressDialog = wait_win.create();
             progressDialog.show();
             return progressDialog;
+        }
+
+        private void searchItem() {
+                //   data = fetch_data();
+             //   androidx.appcompat.app.AlertDialog win = init_win("Connecting to database", "Fetching data.");
+                for (int itens = 2; itens < tabela.getChildCount(); itens++) {
+                    tabela.removeViewAt(itens);
+                }
+                startFetchingData();
+        }
+
+        @Override
+        protected void onDestroy() {
+            super.onDestroy();
+            getDelegate().onDestroy();
+            DB.close();
+            System.out.println("destroing");
         }
 
     @Override
@@ -208,23 +209,29 @@ public class Database_window extends AppCompatActivity {
             DB.open();
         }
         catch (Exception e) {
-            System.out.println("null database");
             Toast.makeText(Database_window.this, "Error to open database", Toast.LENGTH_LONG).show();
             System.out.println("error to open database");
             return;
         }
 
-        String[] d1 = new String[1000];
-        long[] d2 = new long[1000];
+        search = findViewById(R.id.Filter);
+        ImageButton searchButton = findViewById(R.id.SearchButton);
+
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                currentFilter = search.getText().toString();
+                if (currentFilter.equals(LastFilter)) {
+                    return;
+                }
+                LastFilter = currentFilter;
+
+                searchItem();
+            }
+            });
 
 
-        for (long i = 0, quantity = 0; i < 1000; i++, quantity += 10) {
-            d1[(int) i] = Long.valueOf(i).toString();
-            d2[(int) i] = quantity;
-        }
-        DB.insertAllData(d1, d2);
-
-        executorService = Executors.newSingleThreadExecutor();
+                executorService = Executors.newSingleThreadExecutor();
 
         // Inicializa o handler para a thread principal
         mainHandler = new Handler(Looper.getMainLooper());
@@ -232,103 +239,76 @@ public class Database_window extends AppCompatActivity {
         TextView textBar = findViewById(R.id.DatabaseLabel);
         textBar.setText("Database " + DB.defaultDB);
 
-        System.out.println("created");
-        System.out.println(DB.defaultDB);
-
         startFetchingData();
-
-     /*   for (long i = 0; i < 1000; i++) {
-            DB.addData(Long.valueOf(i).toString(), i);
-        }*/
 
     }
 
     private void startFetchingData() {
         // Mostra a janela de carregamento antes de iniciar a busca
-        androidx.appcompat.app.AlertDialog loadingDialog = init_win();
+        final androidx.appcompat.app.AlertDialog loadingDialog = init_win("Connecting to database", "Fetching data.");
 
         // Executa a busca no banco de dados em uma thread separada
         executorService.execute(() -> {
-            // Realize a busca no banco de dados
-            data = fetch_data();
+            try {
+                // Realiza a busca no banco de dados
+                data = fetch_data();
+                System.out.println("fetched");
 
-            // Retorna para a thread principal para atualizar a UI
-            mainHandler.post(() -> {
-                // Atualiza a tabela com os dados buscados
-                create_table(loadingDialog);
-
-                // Fecha a janela de carregamento
-                if (loadingDialog != null && loadingDialog.isShowing()) {
-                    System.out.println("yupi");
-                }
-            });
+                // Retorna para a thread principal para atualizar a UI
+                mainHandler.post(() -> {
+                    try {
+                        // Atualiza a tabela com os dados buscados
+                        System.out.println("creating");
+                        create_table(loadingDialog);
+                        System.out.println("created");
+                    } catch (Exception e) {
+                        System.out.println("Error while creating table: " + e.getMessage());
+                        e.printStackTrace();
+                    } finally {
+                        // Garante que o fechamento do dialog seja feito na UI Thread
+                        runOnUiThread(() -> {
+                            if (loadingDialog.isShowing()) {
+                                System.out.println("Dismissing loading dialog");
+                                loadingDialog.dismiss();
+                            }
+                        });
+                    }
+                });
+            } catch (Exception e) {
+                System.out.println("Error fetching data: " + e.getMessage());
+                e.printStackTrace();
+                // Mostra o Toast na thread principal e fecha o diálogo
+                runOnUiThread(() -> {
+                    if (loadingDialog.isShowing()) {
+                        loadingDialog.dismiss();
+                    }
+                    Toast.makeText(Database_window.this, "Error fetching data", Toast.LENGTH_SHORT).show();
+                });
+            } finally {
+                // Garante o fechamento do diálogo caso o cursor seja null ou outra exceção aconteça
+                runOnUiThread(() -> {
+                    if (loadingDialog.isShowing()) {
+                        loadingDialog.dismiss();
+                    }
+                });
+            }
         });
     }
 
-      /*  wait_win.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                // Apenas fecha o diálogo de erro
-                dialog.dismiss();
-                showEditDialog(widget, index);
-            }
-        }).show();
-    } */
-
-
-
-
-
-        // Obtém os dados extras do Intent
-       // data = intent.getStringArrayListExtra("extra_data_key");
-
-      /*  Button btnDeleteDatabase = findViewById(R.id.btn_delete_database);
-        btnDeleteDatabase.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                DB.deleteAllData();
-                data.clear();
-                tabela.removeAllViews();
-                Toast.makeText(Database_window.this, "Database deletada com sucesso!", Toast.LENGTH_SHORT).show();
-            }
-        } */
-
     void create_table(androidx.appcompat.app.AlertDialog loadingDialog) {
 
-       // data = fetch_data();
-
-//        binding = ActivityDatabaseWindowBinding.inflate(getLayoutInflater());
-  //      setContentView(binding.getRoot());
-
-    //    Toolbar toolbar = binding.toolbar;
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setTitle("Softvoice scanner");
-   //     CollapsingToolbarLayout toolBarLayout = binding.toolbarLayout;
-     //   toolBarLayout.setTitle(getTitle());
-
- /*       ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.toolbar), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        }); */
 
         tabela = findViewById(R.id.data_grid);
         List<TableRow> selectedRows = new ArrayList<>();
         final boolean[] isSelectionModeActive = {false};
         final Button buttonExlude = findViewById(R.id.delete_button);
 
-        // TableRow newRow = new TableRow(this);
-
         if (data == null) {
-            try {
-                System.out.println("error " + data);
-            }
-            catch (Exception e) {
-                System.out.println("Fatal error");
-            }
-            return;
+        return;
         }
 
         int data_size = data.size() / 2;
@@ -340,11 +320,8 @@ public class Database_window extends AppCompatActivity {
 
         for (int index = 0, item = 0; item < data_size; index += 2, item += 1) {
 
-      //      View bar = findViewById(R.id.bar);
-
             TableRow newRow = new TableRow(this);
 
-          //  TextView productId = new TextView(this);
             productId[item] = new TextView(this);
             productId[item].setText(data.get(index));
             productId[item].setLayoutParams(new TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 4f));
@@ -353,9 +330,6 @@ public class Database_window extends AppCompatActivity {
             productId[item].setTextColor(Color.WHITE);
             productId[item].setTextSize(14);
 
-    //        newRow.addView(bar);
-
-          //  TextView quantity = new TextView(this);
             quantity[item] = new TextView(this);
             quantity[item].setText(data.get(index+1));
             quantity[item].setLayoutParams(new TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 4f));
@@ -416,7 +390,7 @@ public class Database_window extends AppCompatActivity {
 
 
             View separator = new View(this);
-            separator.setLayoutParams(new TableRow.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
+            separator.setLayoutParams(new TableRow.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2));
             separator.setBackgroundColor(getResources().getColor(android.R.color.white));
 
             tabela.addView(newRow);
@@ -455,14 +429,31 @@ public class Database_window extends AppCompatActivity {
             public void onClick(View v) {
                 if (ContextCompat.checkSelfPermission(Database_window.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(Database_window.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
-                    return;
                 }
 
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-                startActivityForResult(intent, 2);
+                NameOfFile(new NameCallback() {
+                    @Override
+                    public void onNameEntered(String fileName) {
+                        // Aqui você pode usar o nome do arquivo retornado
+                        if (!fileName.isEmpty()) {
+                            // Prossiga com a lógica, como salvar o arquivo Excel
+                            FinalFileName = fileName;
+                            // Sua lógica para criar o arquivo Excel aqui...
+                            executorServiceExcel = Executors.newSingleThreadExecutor();
+
+                            // Inicializa o handler para a thread principal
+                            excelHandler = new Handler(Looper.getMainLooper());
+
+                            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                            startActivityForResult(intent, 2);
+                        }
+                    }
+                });
+
+
             }
             });
-
+        System.out.println("fechado");
         loadingDialog.dismiss();
 
     }
@@ -478,10 +469,80 @@ public class Database_window extends AppCompatActivity {
                 String documentId = DocumentsContract.getTreeDocumentId(uri);
                 // You would then use this ID to create a new file in the selected directory
                 Toast.makeText(this, "Directory selected: " + documentId, Toast.LENGTH_SHORT).show();
-                ExcelDB excelDB = new ExcelDB(Database_window.this);
-                excelDB.GenerateExcel(data, uri);
+                startExcel(uri);
             }
         }
+    }
+
+    private void NameOfFile(NameCallback callback) {
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.new_database_layout, null);
+        final EditText file_name = dialogView.findViewById(R.id.NewDatabaseInput);
+
+        file_name.setHint("File name....");
+
+        // Obter a data e hora formatadas
+        LocalDateTime myDateObj = LocalDateTime.now();
+        DateTimeFormatter myFormatObj = DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss");
+        final String formattedDate = myDateObj.format(myFormatObj);
+
+        // Define o nome padrão do arquivo
+        final String defaultName = DB.defaultDB + "-" + formattedDate;
+        file_name.setText(defaultName);
+
+        // Cria e mostra o diálogo de entrada de nome
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Name of Excel file")
+                .setView(dialogView)
+                .setPositiveButton("Create", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String FileName = file_name.getText().toString();
+
+                        // Verifica se o nome está vazio
+                        if (FileName.isEmpty()) {
+                            Toast.makeText(Database_window.this, "Invalid name for Excel file", Toast.LENGTH_LONG).show();
+                            // Reabre o diálogo se o nome estiver vazio
+                            NameOfFile(callback);
+                        } else {
+                            // Retorna o nome através do callback se for válido
+                            callback.onNameEntered(FileName);
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss(); // Fechar o diálogo sem nenhuma ação adicional
+                    }
+                })
+                .show();
+    }
+
+    private void startExcel(Uri uri) {
+        // Mostra a janela de carregamento antes de iniciar a busca
+        androidx.appcompat.app.AlertDialog loadingExcel = init_win("Creating Excel", "Do not stop program.\nIt will create Excel file.");
+
+        // Executa a busca no banco de dados em uma thread separada
+        executorServiceExcel.execute(() -> {
+            // Realize a busca no banco de dados
+            ExcelDB excelDB = new ExcelDB(Database_window.this);
+            excelDB.FileName = FinalFileName;
+            excelDB.GenerateExcel(data, uri);
+
+            // Retorna para a thread principal para atualizar a UI
+            excelHandler.post(() -> {
+                // Atualiza a tabela com os dados buscados
+                excelDB.checkExcel();
+
+
+                // Fecha a janela de carregamento
+                if (loadingExcel != null && loadingExcel.isShowing()) {
+                    System.out.println("yupi");
+                    loadingExcel.dismiss();
+                }
+            });
+        });
     }
 
     @Override
