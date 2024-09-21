@@ -47,7 +47,7 @@ public class Database_window extends AppCompatActivity {
 
     private ActivityDatabaseWindowBinding binding;
     private Database DB;
-    private ArrayList<String> data;  // Supõe-se que data já foi inicializado com dados
+    private ArrayList<String> data, rawDataExcel;  // Supõe-se que data já foi inicializado com dados
     private TableLayout tabela;
     private TextView[] productId, quantity;
     private ExecutorService executorService, executorServiceExcel;
@@ -427,35 +427,78 @@ public class Database_window extends AppCompatActivity {
         buttonExcel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (ContextCompat.checkSelfPermission(Database_window.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(Database_window.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
-                }
-
-                NameOfFile(new NameCallback() {
-                    @Override
-                    public void onNameEntered(String fileName) {
-                        // Aqui você pode usar o nome do arquivo retornado
-                        if (!fileName.isEmpty()) {
-                            // Prossiga com a lógica, como salvar o arquivo Excel
-                            FinalFileName = fileName;
-                            // Sua lógica para criar o arquivo Excel aqui...
-                            executorServiceExcel = Executors.newSingleThreadExecutor();
-
-                            // Inicializa o handler para a thread principal
-                            excelHandler = new Handler(Looper.getMainLooper());
-
-                            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-                            startActivityForResult(intent, 2);
-                        }
-                    }
-                });
-
+                checkData();
 
             }
             });
         System.out.println("fechado");
         loadingDialog.dismiss();
 
+    }
+
+    private void ExcelInterface() {
+        if (ContextCompat.checkSelfPermission(Database_window.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(Database_window.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
+        }
+
+        NameOfFile(new NameCallback() {
+            @Override
+            public void onNameEntered(String fileName) {
+                // Aqui você pode usar o nome do arquivo retornado
+                if (!fileName.isEmpty()) {
+                    // Prossiga com a lógica, como salvar o arquivo Excel
+                    FinalFileName = fileName;
+                    // Sua lógica para criar o arquivo Excel aqui...
+                    executorServiceExcel = Executors.newSingleThreadExecutor();
+
+                    // Inicializa o handler para a thread principal
+                    excelHandler = new Handler(Looper.getMainLooper());
+
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                    startActivityForResult(intent, 2);
+                }
+            }
+        });
+
+
+    }
+
+    private void checkData() {
+        if (!currentFilter.isEmpty()) { // empty é o filtro que mostra todos os dados
+            System.out.println("data filter detected");
+            LayoutInflater inflater = getLayoutInflater();
+            if (inflater == null) {
+                System.out.println("null inflater");
+            }
+            View dialogView = inflater.inflate(R.layout.filterlayout, null);
+            if (dialogView == null) {
+                System.out.println("Null viewer");
+                return;
+            }
+            new AlertDialog.Builder(this)
+                    .setTitle("Data filter detected")
+                    .setMessage("Do you want to apply the filter?\nDo not accept if you need all data to Excel")
+                    .setView(dialogView)
+                    .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            final String tmp_filter = currentFilter;
+                            currentFilter = "";
+                            rawDataExcel = fetch_data();
+                            currentFilter = tmp_filter;
+                            ExcelInterface();
+                        }
+                    })
+                    .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            rawDataExcel = data;
+                            ExcelInterface();
+                        }
+                        }).show();
+
+
+        }
     }
 
     @Override
@@ -528,7 +571,7 @@ public class Database_window extends AppCompatActivity {
             // Realize a busca no banco de dados
             ExcelDB excelDB = new ExcelDB(Database_window.this);
             excelDB.FileName = FinalFileName;
-            excelDB.GenerateExcel(data, uri);
+            excelDB.GenerateExcel(rawDataExcel, uri);
 
             // Retorna para a thread principal para atualizar a UI
             excelHandler.post(() -> {
