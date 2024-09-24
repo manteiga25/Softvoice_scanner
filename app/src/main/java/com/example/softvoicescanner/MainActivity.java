@@ -1,9 +1,15 @@
 package com.example.softvoicescanner;
 
+import android.Manifest;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.DocumentsContract;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -27,19 +33,30 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 
 import android.widget.Toast;
 
+import org.apache.poi.ss.formula.functions.T;
+
+import java.io.File;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -47,8 +64,11 @@ public class MainActivity extends AppCompatActivity {
 
     private DrawerLayout drawer;
     private TextView prod_id, quantity;
-    NavigationView navebar;
     ActionBarDrawerToggle drawer_togle;
+    private String FinalFileName;
+    private ExecutorService executorService;
+    private Handler mainHandler;
+    private ArrayList<String> selectedTables;
 
     private boolean light = false;
 
@@ -62,6 +82,10 @@ public class MainActivity extends AppCompatActivity {
         else {
             button.setImageResource(R.drawable.baseline_flash_off_24);
         }
+    }
+
+    public interface NameCallback {
+        void onNameEntered(String fileName);
     }
 
     @Override
@@ -129,16 +153,6 @@ public class MainActivity extends AppCompatActivity {
 
             LinearLayout checkboxesContainer = dialogView.findViewById(R.id.checkboxes_container);
 
-            // Criar um botão para processar a seleção
-
-           // Button b = dialogView.findViewById(R.id.DeleteButton);
-        //    checkboxesContainer.removeView(b);
-            //checkboxesContainer.addView(b);
-
-          //  Button submitButton = new Button(this);
-          //  submitButton.setText("Delete");
-           // checkboxesContainer.addView(submitButton);
-
             // Lista de tabelas do banco de dados
             ArrayList<String> options = DB.listAllTables();
 
@@ -178,6 +192,74 @@ public class MainActivity extends AppCompatActivity {
                     deleteDatabase(checkBoxList, checkboxesContainer);
                 }
             });
+        } else if (id == R.id.RenameDatabase) {
+            ArrayList<String> databases = DB.listAllTables();
+            if (databases.isEmpty()) {
+                noDatabase("Rename Database");
+                return super.onOptionsItemSelected(item);
+            }
+
+            LayoutInflater inflater = getLayoutInflater();
+            View dialogView = inflater.inflate(R.layout.renamelayout, null);
+            Spinner spinner = dialogView.findViewById(R.id.spinnerrename);
+
+            final TextInputEditText renameBox = dialogView.findViewById(R.id.RenameBox);
+
+            final boolean dbEmpty = DB.defaultDB.isEmpty();
+            String cacheDBName = "(None)";
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(MainActivity.this, android.R.layout.simple_spinner_dropdown_item, databases);
+
+            spinner.setAdapter(adapter);
+
+            int index = 0;
+            if (!dbEmpty) {
+                for (final String name : databases) {
+                    if (name.equals(DB.defaultDB)) {
+                        cacheDBName = DB.defaultDB;
+                        break;
+                    }
+                    index += 1;
+                }
+            }
+            spinner.setSelection(index, true);
+
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Rename Database")
+                    .setMessage("current database " + cacheDBName)
+                    .setView(dialogView)
+                    .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            final String NewName = renameBox.getText().toString();
+                            if (NewName.isEmpty()) {
+                                Toast.makeText(MainActivity.this, "Invalid name", Toast.LENGTH_LONG).show();
+                                onOptionsItemSelected(item);
+                                return;
+                            }
+                            final String Database_selected = spinner.getSelectedItem().toString();
+                            // Definir o Adapter no Spinner
+                            if (!DB.changeDbName(Database_selected, NewName)) {
+                                Toast.makeText(MainActivity.this, "Error to rename database from " + Database_selected + " to " + NewName, Toast.LENGTH_LONG).show();
+                                return;
+                            }
+
+                            DB.writeDefaultDB(NewName);
+
+                            Toast.makeText(MainActivity.this, "Success to rename database from " + Database_selected + " to " + NewName, Toast.LENGTH_SHORT).show();
+
+                            if (DB.defaultDB.equals(Database_selected)) {
+                                DB.defaultDB = NewName;
+                            }
+
+                            defaultDB = Database_selected;
+
+                            System.out.println(spinner.getSelectedItem().toString() + " " + DB.defaultDB);
+                            getSupportActionBar().setTitle("Softvoice scanner " + DB.defaultDB);
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         } else if (id == R.id.SwiDatabase) {
             ArrayList<String> databases = DB.listAllTables();
             if (databases.isEmpty()) {
@@ -226,9 +308,157 @@ public class MainActivity extends AppCompatActivity {
                     .setNegativeButton("Cancel", null)
                     .show();
         }
+        else if (id == R.id.ImportDatabase) {
+            System.out.println("clicked");
+        }
+        else if (id == R.id.ExportDatabase) {
+            LayoutInflater inflater = getLayoutInflater();
+            View dialogView = inflater.inflate(R.layout.scrollayout, null);
+
+            LinearLayout checkboxesContainer = dialogView.findViewById(R.id.checkboxes_container);
+
+            // Lista de tabelas do banco de dados
+            ArrayList<String> options = DB.listAllTables();
+
+            // Lista para armazenar as CheckBoxes criadas
+            ArrayList<CheckBox> checkBoxList = new ArrayList<>();
+
+            // Criar dinamicamente CheckBoxes
+            for (String option : options) {
+                System.out.println(option);
+                CheckBox checkBox = new CheckBox(this);
+                checkBox.setText(option);
+                checkboxesContainer.addView(checkBox);
+                checkBoxList.add(checkBox);
+            }
+
+            // Criar e mostrar o AlertDialog
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Export Databases")
+                    .setView(dialogView)
+                    .setPositiveButton("Confirm", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            selectedTables = new ArrayList<>();
+                            for (final CheckBox box : checkBoxList) {
+                                if (box.isChecked()) {
+                                    selectedTables.add(box.getText().toString());
+                                    System.out.println(box.getText().toString());
+                                }
+                            }
+                            if (selectedTables.isEmpty()) {
+                                Toast.makeText(MainActivity.this, "No database selected", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+                            DbInterface();
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        }
 
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void DbInterface() {
+        if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
+        } else {
+            NameOfFile(new NameCallback() {
+                @Override
+                public void onNameEntered(String fileName) {
+                    // Aqui você pode usar o nome do arquivo retornado
+                    if (!fileName.isEmpty()) {
+                        // Prossiga com a lógica, como salvar o arquivo Excel
+                        FinalFileName = fileName;
+                        // Sua lógica para criar o arquivo Excel aqui...
+                        executorService = Executors.newSingleThreadExecutor();
+
+                        // Inicializa o handler para a thread principal
+                        mainHandler = new Handler(Looper.getMainLooper());
+
+                        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                        startActivityForResult(intent, 2);
+                    }
+                }
+            });
+        }
+    }
+
+    private void NameOfFile(NameCallback callback) {
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.new_database_layout, null);
+        final EditText file_name = dialogView.findViewById(R.id.NewDatabaseInput);
+
+        file_name.setHint("File name....");
+
+        // Obter a data e hora formatadas
+        LocalDateTime myDateObj = LocalDateTime.now();
+        DateTimeFormatter myFormatObj = DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss");
+        final String formattedDate = myDateObj.format(myFormatObj);
+
+        // Define o nome padrão do arquivo
+        final String defaultName = "Backup-" + formattedDate;
+        file_name.setText(defaultName);
+
+        // Cria e mostra o diálogo de entrada de nome
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Name of Database file")
+                .setView(dialogView)
+                .setPositiveButton("Create", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        String FileName = file_name.getText().toString();
+
+                        // Verifica se o nome está vazio
+                        if (FileName.isEmpty()) {
+                            Toast.makeText(MainActivity.this, "Invalid name for Database file", Toast.LENGTH_LONG).show();
+                            // Reabre o diálogo se o nome estiver vazio
+                            NameOfFile(callback);
+                        } else {
+                            // Retorna o nome através do callback se for válido
+                            callback.onNameEntered(FileName);
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss(); // Fechar o diálogo sem nenhuma ação adicional
+                    }
+                })
+                .show();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 2 && resultCode == RESULT_OK) {
+            Uri uri = data.getData();
+            if (uri != null) {
+                // Use DocumentsContract APIs to create a file in the selected directory
+              //  String documentId = DocumentsContract.getTreeDocumentId(uri);
+                File externalDbPath = new File(getExternalFilesDir(null), "BackupDatabase");
+
+                if (!externalDbPath.exists()) {
+                    externalDbPath.mkdirs();
+                }
+
+                String dbPath = externalDbPath.getAbsolutePath();
+
+                // You would then use this ID to create a new file in the selected directory
+               // Toast.makeText(this, "Directory selected: " + documentId, Toast.LENGTH_SHORT).show();
+                if (DB.createExternalDb(selectedTables, dbPath, FinalFileName)) {
+                    Toast.makeText(MainActivity.this, "Success to create Backup in android/data", Toast.LENGTH_LONG).show();
+                }
+                else {
+                    Toast.makeText(MainActivity.this, "Error to create Backup in android/data", Toast.LENGTH_LONG).show();
+                }
+                selectedTables.clear();
+            }
+        }
     }
 
     private void deleteDatabase(ArrayList<CheckBox> checkBoxList, LinearLayout checkboxesContainer) {

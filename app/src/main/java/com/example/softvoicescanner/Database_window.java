@@ -23,6 +23,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -33,6 +34,8 @@ import android.net.Uri;
 
 import android.Manifest;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.example.softvoicescanner.databinding.ActivityDatabaseWindowBinding;
 
 import java.time.LocalDateTime;
@@ -55,13 +58,13 @@ public class Database_window extends AppCompatActivity {
     private String FinalFileName;
     private String currentFilter = "", LastFilter = "";
     private EditText search;
+    private Button buttonExlude;
 
     public interface NameCallback {
         void onNameEntered(String fileName);
     }
 
     protected ArrayList<String> fetch_data() {
-     //   Cursor cursor = DB.fetchAllDataCursor();
         if (data != null) {
             data.clear();
         }
@@ -173,18 +176,57 @@ public class Database_window extends AppCompatActivity {
             View customLayout = LayoutInflater.from(this).inflate(R.layout.progresslayout, null);
             wait_win.setView(customLayout);
 
-// Criar e mostrar o AlertDialog
+            ImageView gif = customLayout.findViewById(R.id.imageViewGif);
+
+            Glide.with(this)
+                    .asGif()
+                    .load(R.drawable.loadb)
+               //     .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                 //   .override(200, 200)  // Define um tamanho específico
+                    .into(gif);
+
             androidx.appcompat.app.AlertDialog progressDialog = wait_win.create();
+
             progressDialog.show();
             return progressDialog;
         }
 
         private void searchItem() {
-                //   data = fetch_data();
-             //   androidx.appcompat.app.AlertDialog win = init_win("Connecting to database", "Fetching data.");
-                for (int itens = 2; itens < tabela.getChildCount(); itens++) {
+         /*       for (int itens = 2; itens < tabela.getChildCount(); itens++) {
                     tabela.removeViewAt(itens);
-                }
+                    //tabela.removeViewAt(itens+1);
+                } */
+            tabela.removeAllViews();
+
+            TableRow newRow = new TableRow(this);
+
+            TextView constProductId = new TextView(this);
+            constProductId.setText("Product id");
+            constProductId.setLayoutParams(new TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 4f));
+            constProductId.setGravity(Gravity.CENTER_HORIZONTAL);
+            constProductId.setPadding(10, 10, 10, 10);
+            constProductId.setTextColor(Color.WHITE);
+            constProductId.setTextSize(14);
+
+            TextView constQuant = new TextView(this);
+            constQuant.setText("Quantity");
+            constQuant.setLayoutParams(new TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 4f));
+            constQuant.setGravity(Gravity.CENTER_HORIZONTAL);
+            constQuant.setPadding(10, 10, 10, 10);
+            constQuant.setTextColor(Color.WHITE);
+            constQuant.setTextSize(14);
+
+            newRow.addView(constProductId);
+            newRow.addView(constQuant);
+
+            View separator = new View(this);
+            separator.setLayoutParams(new TableRow.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 2));
+            separator.setBackgroundColor(getResources().getColor(android.R.color.white));
+
+            tabela.addView(newRow);
+            tabela.addView(separator);
+
+
                 startFetchingData();
         }
 
@@ -214,6 +256,7 @@ public class Database_window extends AppCompatActivity {
             return;
         }
 
+        buttonExlude = findViewById(R.id.delete_button);
         search = findViewById(R.id.Filter);
         ImageButton searchButton = findViewById(R.id.SearchButton);
 
@@ -267,6 +310,7 @@ public class Database_window extends AppCompatActivity {
                     } finally {
                         // Garante que o fechamento do dialog seja feito na UI Thread
                         runOnUiThread(() -> {
+                         //   create_table(loadingDialog);
                             if (loadingDialog.isShowing()) {
                                 System.out.println("Dismissing loading dialog");
                                 loadingDialog.dismiss();
@@ -305,15 +349,12 @@ public class Database_window extends AppCompatActivity {
         tabela = findViewById(R.id.data_grid);
         List<TableRow> selectedRows = new ArrayList<>();
         final boolean[] isSelectionModeActive = {false};
-        final Button buttonExlude = findViewById(R.id.delete_button);
 
         if (data == null) {
         return;
         }
 
         int data_size = data.size() / 2;
-
-        System.out.println(data_size);
 
         productId = new TextView[data_size];
         quantity = new TextView[data_size];
@@ -404,8 +445,9 @@ public class Database_window extends AppCompatActivity {
                 Iterator<TableRow> iterator = selectedRows.iterator();
                 while (iterator.hasNext()) {
                     TableRow id = iterator.next();
-                    TextView tmp_prod = (TextView) id.getChildAt(1);
+                    TextView tmp_prod = (TextView) id.getChildAt(0);
                     final String tmp_prod_str = tmp_prod.getText().toString();
+                    System.out.println(tmp_prod_str);
                     if (DB.deleteData(tmp_prod_str) <= 0) {
                         error = true;
                         Toast.makeText(Database_window.this, "Error to delete " + tmp_prod_str, Toast.LENGTH_LONG).show();
@@ -440,7 +482,7 @@ public class Database_window extends AppCompatActivity {
         if (ContextCompat.checkSelfPermission(Database_window.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(Database_window.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
         }
-
+        else {
         NameOfFile(new NameCallback() {
             @Override
             public void onNameEntered(String fileName) {
@@ -459,17 +501,42 @@ public class Database_window extends AppCompatActivity {
                 }
             }
         });
+        }
 
 
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 2) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permissão concedida, criar o arquivo
+                NameOfFile(new NameCallback() {
+                    @Override
+                    public void onNameEntered(String fileName) {
+                        if (!fileName.isEmpty()) {
+                            FinalFileName = fileName;
+                            executorServiceExcel = Executors.newSingleThreadExecutor();
+
+                            excelHandler = new Handler(Looper.getMainLooper());
+
+                            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+                            startActivityForResult(intent, 2);
+                        }
+                    }
+                });
+            } else {
+                // Permissão negada, exibir uma mensagem para o usuário
+                Toast.makeText(this, "Permissão negada para acessar o armazenamento externo.", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void checkData() {
         if (!currentFilter.isEmpty()) { // empty é o filtro que mostra todos os dados
             System.out.println("data filter detected");
             LayoutInflater inflater = getLayoutInflater();
-            if (inflater == null) {
-                System.out.println("null inflater");
-            }
             View dialogView = inflater.inflate(R.layout.filterlayout, null);
             if (dialogView == null) {
                 System.out.println("Null viewer");
@@ -495,10 +562,14 @@ public class Database_window extends AppCompatActivity {
                             rawDataExcel = data;
                             ExcelInterface();
                         }
-                        }).show();
-
-
+                    }).show();
         }
+        else {
+            rawDataExcel = data;
+            ExcelInterface();
+        }
+
+
     }
 
     @Override

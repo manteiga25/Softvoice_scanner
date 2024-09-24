@@ -55,6 +55,9 @@ public class ExcelDB {
 
         try {
         // Criar o arquivo Excel no armazenamento externo
+
+            System.out.println("path " + uri);
+
         DocumentFile pickedDir = DocumentFile.fromTreeUri(context, uri);
         DocumentFile file = pickedDir.createFile("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", FileName + ".xlsx");
 

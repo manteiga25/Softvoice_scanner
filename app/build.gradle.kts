@@ -45,7 +45,9 @@ dependencies {
     implementation(libs.drawer)
     implementation(libs.mainXls)
     implementation(libs.excel)
+    implementation(libs.gif)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    annotationProcessor(libs.glideCompiler)
 }

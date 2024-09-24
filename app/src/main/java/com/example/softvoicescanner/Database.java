@@ -7,18 +7,22 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.net.Uri;
+import android.util.Log;
 import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 
 public class Database extends SQLiteOpenHelper {
 
     private SQLiteDatabase database;
-    private File file;
 
     public String defaultDB;
 
@@ -30,6 +34,63 @@ public class Database extends SQLiteOpenHelper {
     public Database(Context activity_context) {
         super(activity_context, "soft_database.db", null, 1);
         context = activity_context;
+    }
+
+    public boolean createExternalDb(final ArrayList<String> tables, final String DbPath, String DbName) {
+        try {
+
+            System.out.println("name " + DbName);
+
+            DbName = DbPath + "/" + DbName;
+
+            File dbFile = context.getDatabasePath("soft_database.db");
+
+            System.out.println("Path " + DbName);
+
+            System.out.println("0");
+
+            if (!dbFile.exists()) {
+                System.out.println(dbFile.getPath() + " not found");
+                return false;
+            }
+            SQLiteDatabase existingDb = SQLiteDatabase.openDatabase(dbFile.getPath(), null, SQLiteDatabase.OPEN_READONLY);
+
+            System.out.println("1");
+
+            SQLiteDatabase newDb = SQLiteDatabase.openOrCreateDatabase(DbName, null);
+
+            System.out.println("2");
+
+            Cursor cursor;
+
+            for (final String table : tables) {
+                System.out.println(table);
+                cursor = existingDb.rawQuery("SELECT * FROM " + table, null);
+                if (cursor == null) {
+                    System.out.println("null");
+                    return false;
+                }
+                newDb.execSQL("CREATE TABLE IF NOT EXISTS " + table + " (product_id TEXT PRIMARY KEY NOT NULL, quantidade BIGINT NOT NULL);");
+                if (cursor.moveToFirst()) {
+                    do {
+                        ContentValues contentValues = new ContentValues();
+                        contentValues.put("product_id", cursor.getString(0));
+                        contentValues.put("quantidade", cursor.getString(1));
+
+                        newDb.insert(table, null, contentValues);
+                        }
+                        while (cursor.moveToNext());
+                    cursor.close();
+                    }
+            }
+
+            newDb.close();
+            return true;
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     @Override
@@ -287,4 +348,14 @@ public class Database extends SQLiteOpenHelper {
     public int deleteData(String product_id) {
         return database.delete(defaultDB, "product_id = ?", new String[]{String.valueOf(product_id)});
     }
+
+    public boolean changeDbName(final String Table, final String newTable) {
+        try {
+            database.execSQL("ALTER TABLE " + Table + " RENAME TO " + newTable);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 }

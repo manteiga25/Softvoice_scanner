@@ -11,6 +11,7 @@ barcode_version = "4.3.0"
 drawer_ver = "1.2.0"
 main_xls_lib = "5.2.3"
 xls_lib = "5.2.3"
+gifVer = "4.15.1"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -24,6 +25,8 @@ barcode = { group = 'com.journeyapps', name = "zxing-android-embedded", version.
 drawer = { group = 'androidx.drawerlayout', name = 'drawerlayout', version.ref = "drawer_ver"}
 mainXls = {group = 'org.apache.poi', name = 'poi', version.ref = "main_xls_lib"}
 excel = {group = 'org.apache.poi', name = 'poi-ooxml', version.ref = "xls_lib"}
+gif = {group = "com.github.bumptech.glide", name = "glide", version.ref = "gifVer"}
+glideCompiler = { group = "com.github.bumptech.glide", name = "compiler", version.ref = "gifVer" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

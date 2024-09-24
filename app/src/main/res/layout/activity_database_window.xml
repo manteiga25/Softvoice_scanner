@@ -41,7 +41,7 @@
                 android:layout_height="match_parent"
                 android:textColorHighlight="#000000"
                 android:textSize="25sp"
-                android:translationX="130dp"
+                android:translationX="100dp"
                 android:translationY="20dp"
                 android:drawingCacheQuality="high"
                 android:textColor="@color/black"
