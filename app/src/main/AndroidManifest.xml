@@ -14,9 +14,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/_2eefb_920fba6d276342b1a50f3e8fc91c68f9_mv2"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@drawable/_2eefb_920fba6d276342b1a50f3e8fc91c68f9_mv2"
         android:supportsRtl="true"
         android:theme="@style/Theme.SoftvoiceScanner"
         tools:targetApi="31">
