@@ -2,11 +2,8 @@ package com.example.softvoicescanner;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.os.AsyncTask;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -165,7 +162,7 @@ public class Database_window extends AppCompatActivity {
 
         // Preenche os campos com dados existentes
         editProductId.setText(tmp_product_id);
-        editQuantity.setText(tmp_quantity);
+        editQuantity.setText(String.valueOf(tmp_quantity));
         new AlertDialog.Builder(this)
                 .setTitle("Edit Item")
                 .setView(dialogView)
@@ -173,8 +170,8 @@ public class Database_window extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         final String new_tmp_product_id = editProductId.getText().toString();
-                        final long new_tmp_quantity = new Long(editQuantity.getText().toString());
-                        if (new_tmp_product_id.isEmpty() || new_tmp_quantity == 0) {
+                        final String new_tmp_quantity_str = editQuantity.getText().toString();
+                        if (new_tmp_product_id.isEmpty() || new_tmp_quantity_str.isEmpty()) {
                             androidx.appcompat.app.AlertDialog.Builder error_win = new androidx.appcompat.app.AlertDialog.Builder(Database_window.this);
                             error_win.setTitle("Invalid value");
                             error_win.setMessage("You need to set a value.");
@@ -187,34 +184,33 @@ public class Database_window extends AppCompatActivity {
                                 }
                             }).show();
                         }
-                            else if (tmp_product_id.equals(new_tmp_product_id) && new Long(tmp_quantity) == new_tmp_quantity) {
+                            else if (tmp_product_id.equals(new_tmp_product_id) && tmp_quantity.equals(new_tmp_quantity_str)) {
                                 Toast.makeText(Database_window.this, "Without changes", Toast.LENGTH_SHORT).show();
                             } else {
 
-                            new AsyncTask<Void, Void, Boolean>() {
-                                @Override
-                                protected Boolean doInBackground(Void... voids) {
-                                    // Atualizar o banco de dados em segundo plano
-                                    return DB.updateData(tmp_product_id, editProductId.getText().toString(), new Long(editQuantity.getText().toString())) != -1;
-                                }
+                                final long new_tmp_quantity = Long.parseLong(new_tmp_quantity_str);
 
-                                @Override
-                                protected void onPostExecute(Boolean success) {
-                                    // Executa na UI thread após a operação de background
+                                executorService = Executors.newSingleThreadExecutor();
+
+                                mainHandler = new Handler(Looper.getMainLooper());
+
+                            executorService.execute(() -> {
+
+                                final boolean success = DB.updateData(tmp_product_id, editProductId.getText().toString(), new_tmp_quantity) != -1;
+
+                                mainHandler.post(() -> {
                                     if (success) {
                                         data.set(index, editProductId.getText().toString());
-                                        //      if (index + 1 < data.size()) {
                                         data.set(index + 1, editQuantity.getText().toString());
                                         Toast.makeText(Database_window.this, "Success to update database", Toast.LENGTH_LONG).show();
+                                        updateTable(widget, editProductId.getText().toString(), new_tmp_quantity);
                                     } else {
                                         Toast.makeText(Database_window.this, "Error to update database", Toast.LENGTH_LONG).show();
-                                        return;
                                     }
-
-                                    // Atualiza a visualização, se necessário
-                                    updateTable(widget, editProductId.getText().toString(), new Long(editQuantity.getText().toString()));
-                                }
-                            }.execute();
+                                    executorService.shutdown();
+                                    mainHandler.removeCallbacksAndMessages(null);
+                                });
+                            });
                         }
                     }
                 })
@@ -759,13 +755,19 @@ public class Database_window extends AppCompatActivity {
 
         file_name.setHint("File name....");
 
+        String filterFileName = "";
+
+        if (!currentFilter.isEmpty()) {
+            filterFileName = currentFilter + "-";
+        }
+
         // Obter a data e hora formatadas
         LocalDateTime myDateObj = LocalDateTime.now();
         DateTimeFormatter myFormatObj = DateTimeFormatter.ofPattern("dd-MM-yyyy-HH:mm:ss");
         final String formattedDate = myDateObj.format(myFormatObj);
 
         // Define o nome padrão do arquivo
-        final String defaultName = DB.defaultDB + "-" + formattedDate;
+        final String defaultName = filterFileName + DB.defaultDB + "-" + formattedDate;
         file_name.setText(defaultName);
 
         // Cria e mostra o diálogo de entrada de nome
@@ -831,7 +833,6 @@ public class Database_window extends AppCompatActivity {
 
                 // Fecha a janela de carregamento
                 if (loadingExcel.isShowing()) {
-                    System.out.println("yupi");
                     loadingExcel.dismiss();
                 }
             });
