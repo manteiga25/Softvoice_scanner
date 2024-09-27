@@ -404,7 +404,6 @@ public class MainActivity extends AppCompatActivity {
 
             // Criar dinamicamente CheckBoxes
             for (final String option : databases) {
-                System.out.println(option);
                 CheckBox checkBox = new CheckBox(this);
                 checkBox.setText(option);
                 if (DB.defaultDB.equals(option)) {
@@ -454,40 +453,17 @@ public class MainActivity extends AppCompatActivity {
                     .setTitle("Unify Database")
                     .setMessage("current database " + cacheDBName)
                     .setView(dialogView)
-                    .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                    .setNeutralButton("Unify and delete tables", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            final ArrayList<String> TablesSelected = new ArrayList<>();
-                            for (final CheckBox box : checkBoxList) {
-                                if (box.isChecked()) {
-                                    TablesSelected.add(box.getText().toString());
-                                }
-                            }
-                            if (TablesSelected.isEmpty()) {
-                                Toast.makeText(MainActivity.this, "No database selected", Toast.LENGTH_LONG).show();
-                          //      onOptionsItemSelected(item);
-                                return;
-                            }
-
-                            executorService = Executors.newSingleThreadExecutor();
-
-                            mainHandler = new Handler(Looper.getMainLooper());
-
-                            AlertDialog loadingWin = init_win("Connecting to database", "Unifying databases\nDo not close the App");
-                            executorService.execute(() -> {
-                                final String Database_selected = spinner.getSelectedItem().toString();
-
-                                final boolean status = DB.unifyDB(TablesSelected, Database_selected);
-
-                                mainHandler.post(() -> {
-                                    loadingWin.dismiss();
-                                    if (status) {
-                                        Toast.makeText(MainActivity.this, "Success to unify database", Toast.LENGTH_SHORT).show();
-                                    } else {
-                                        Toast.makeText(MainActivity.this, "Error to unify database", Toast.LENGTH_SHORT).show();
-                                    }
-                                });
-                            });
+                            unifyDB(checkBoxList, spinner.getSelectedItem().toString(), true);
+                            DB.writeDefaultDB(spinner.getSelectedItem().toString());
+                        }
+                    })
+                    .setPositiveButton("Unify", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            unifyDB(checkBoxList, spinner.getSelectedItem().toString(), false);
                         }
                     })
                     .setNegativeButton("Cancel", null)
@@ -498,6 +474,46 @@ public class MainActivity extends AppCompatActivity {
 
         return super.onOptionsItemSelected(item);
     }
+
+    public void unifyDB(final ArrayList<CheckBox> checkBoxList, final String Database_selected, final boolean deleteTables) {
+        final ArrayList<String> TablesSelected = new ArrayList<>();
+        for (final CheckBox box : checkBoxList) {
+            if (box.isChecked()) {
+                TablesSelected.add(box.getText().toString());
+            }
+        }
+        if (TablesSelected.isEmpty()) {
+            Toast.makeText(MainActivity.this, "No database selected", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        executorService = Executors.newSingleThreadExecutor();
+
+        mainHandler = new Handler(Looper.getMainLooper());
+
+        AlertDialog loadingWin = init_win("Connecting to database", "Unifying databases\nDo not close the App");
+        executorService.execute(() -> {
+
+
+            final boolean status = DB.unifyDB(TablesSelected, Database_selected);
+
+            if (deleteTables) {
+                for (final String table : TablesSelected) {
+                    DB.deleteAllData(table);
+                }
+            }
+
+            mainHandler.post(() -> {
+                loadingWin.dismiss();
+                if (status) {
+                    Toast.makeText(MainActivity.this, "Success to unify database", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "Error to unify database", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
 
     private void DbInterface() {
         if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {

@@ -100,6 +100,7 @@ public class Database extends SQLiteOpenHelper {
 
     public boolean unifyDB(final ArrayList<String> tables, final String tableDst) {
         try {
+            database.beginTransaction();
             for (final String table : tables) {
                 database.execSQL("UPDATE " + tableDst + " SET quantidade = quantidade + " +
                         "(SELECT " + table + ".quantidade FROM " + table +
@@ -113,12 +114,15 @@ public class Database extends SQLiteOpenHelper {
                         "LEFT JOIN " + tableDst + " t1 ON t1.product_id = t2.product_id " +
                         "WHERE t1.product_id IS NULL;");
             }
+            database.setTransactionSuccessful();
             return true;
         }
         catch (Exception e) {
             e.printStackTrace();
             return false;
-        }
+    } finally {
+        database.endTransaction(); // Finaliza a transação
+    }
     }
 
     @Override
