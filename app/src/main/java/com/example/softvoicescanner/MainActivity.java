@@ -9,19 +9,21 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.provider.DocumentsContract;
 import android.text.InputType;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.EditText;
@@ -40,15 +42,13 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
-import com.google.android.material.navigation.NavigationView;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 
 import android.widget.Toast;
-
-import org.apache.poi.ss.formula.functions.T;
 
 import java.io.File;
 import java.time.LocalDateTime;
@@ -62,9 +62,7 @@ public class MainActivity extends AppCompatActivity {
 
     Database DB;
 
-    private DrawerLayout drawer;
     private TextView prod_id, quantity;
-    ActionBarDrawerToggle drawer_togle;
     private String FinalFileName;
     private ExecutorService executorService;
     private Handler mainHandler;
@@ -88,6 +86,30 @@ public class MainActivity extends AppCompatActivity {
         void onNameEntered(String fileName);
     }
 
+    private androidx.appcompat.app.AlertDialog init_win(final String title, final String message) {
+        androidx.appcompat.app.AlertDialog.Builder wait_win = new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this);
+        wait_win.setTitle(title);
+        wait_win.setCancelable(false);
+        wait_win.setMessage(message);
+
+        View customLayout = LayoutInflater.from(this).inflate(R.layout.progresslayout, null);
+        wait_win.setView(customLayout);
+
+        ImageView gif = customLayout.findViewById(R.id.imageViewGif);
+
+        Glide.with(this)
+                .asGif()
+                .load(R.drawable.loadb)
+                .diskCacheStrategy(DiskCacheStrategy.DATA)
+                //   .override(200, 200)  // Define um tamanho específico
+                .into(gif);
+
+        androidx.appcompat.app.AlertDialog progressDialog = wait_win.create();
+
+        progressDialog.show();
+        return progressDialog;
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Infla o menu; isto adiciona itens à barra de menu
@@ -101,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         int id = item.getItemId();
 
         if (id == R.id.database) {
-            if (DB.defaultDB.isEmpty()) {
+            if (DB.defaultDB == null || DB.defaultDB.isEmpty()) {
                 noDatabase("Database not selected");
                 return super.onOptionsItemSelected(item);
             }
@@ -132,11 +154,15 @@ public class MainActivity extends AppCompatActivity {
                             } else {
                                 final short status = DB.createDatabase(data_name);
                                 if (status == 1) {
+
                                     Toast.makeText(MainActivity.this, "Success to create database " + data_name, Toast.LENGTH_SHORT).show();
                                     System.out.println(DB.defaultDB);
                                     DB.writeDefaultDB(data_name);
                                     System.out.println(DB.defaultDB);
                                     getSupportActionBar().setTitle("Softvoice scanner " + DB.defaultDB);
+
+                                    System.out.println("current db " + DB.defaultDB);
+
                                 } else if (status == 2) {
                                     Toast.makeText(MainActivity.this, "Database with name " + data_name + " already exists", Toast.LENGTH_LONG).show();
                                 } else {
@@ -356,6 +382,122 @@ public class MainActivity extends AppCompatActivity {
                     .setNegativeButton("Cancel", null)
                     .show();
         }
+        else if (id == R.id.Unifydatabase) {
+            ArrayList<String> databases = DB.listAllTables();
+            if (databases.isEmpty()) {
+                noDatabase("Unify Database");
+                return super.onOptionsItemSelected(item);
+            }
+
+            LayoutInflater inflater = getLayoutInflater();
+            View dialogView = inflater.inflate(R.layout.fundirdblayout, null);
+            Spinner spinner = dialogView.findViewById(R.id.spinnerDb);
+
+            final LinearLayout frameBox = dialogView.findViewById(R.id.checkbox_container);
+
+            final boolean dbEmpty = DB.defaultDB.isEmpty();
+            String cacheDBName = "(None)";
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(MainActivity.this, android.R.layout.simple_spinner_dropdown_item, databases);
+
+            spinner.setAdapter(adapter);
+
+            final int[] index = {0};
+
+            ArrayList<CheckBox> checkBoxList = new ArrayList<>();
+
+            // Criar dinamicamente CheckBoxes
+            for (final String option : databases) {
+                System.out.println(option);
+                CheckBox checkBox = new CheckBox(this);
+                checkBox.setText(option);
+                if (DB.defaultDB.equals(option)) {
+                    checkBox.setEnabled(false);
+                }
+                frameBox.addView(checkBox);
+                checkBoxList.add(checkBox);
+            }
+
+            spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parentView, View selectedItemView, int position, long id) {
+
+                    final CheckBox OldCheckBox = checkBoxList.get(index[0]);
+
+                    OldCheckBox.setEnabled(true);
+
+                    index[0] = position;
+
+                    System.out.println(index[0]);
+
+                    final CheckBox tmpCheckBox = checkBoxList.get(position);
+
+                    tmpCheckBox.setChecked(false);
+
+                    tmpCheckBox.setEnabled(false);
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parentView) {
+                    return;
+                }
+            });
+
+            if (!dbEmpty) {
+                for (final String name : databases) {
+                    if (name.equals(DB.defaultDB)) {
+                        cacheDBName = DB.defaultDB;
+                        break;
+                    }
+                    index[0] += 1;
+                }
+            }
+            spinner.setSelection(index[0], true);
+
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Unify Database")
+                    .setMessage("current database " + cacheDBName)
+                    .setView(dialogView)
+                    .setPositiveButton("Save", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            final ArrayList<String> TablesSelected = new ArrayList<>();
+                            for (final CheckBox box : checkBoxList) {
+                                if (box.isChecked()) {
+                                    TablesSelected.add(box.getText().toString());
+                                }
+                            }
+                            if (TablesSelected.isEmpty()) {
+                                Toast.makeText(MainActivity.this, "No database selected", Toast.LENGTH_LONG).show();
+                          //      onOptionsItemSelected(item);
+                                return;
+                            }
+
+                            executorService = Executors.newSingleThreadExecutor();
+
+                            mainHandler = new Handler(Looper.getMainLooper());
+
+                            AlertDialog loadingWin = init_win("Connecting to database", "Unifying databases\nDo not close the App");
+                            executorService.execute(() -> {
+                                final String Database_selected = spinner.getSelectedItem().toString();
+
+                                final boolean status = DB.unifyDB(TablesSelected, Database_selected);
+
+                                mainHandler.post(() -> {
+                                    loadingWin.dismiss();
+                                    if (status) {
+                                        Toast.makeText(MainActivity.this, "Success to unify database", Toast.LENGTH_SHORT).show();
+                                    } else {
+                                        Toast.makeText(MainActivity.this, "Error to unify database", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                            });
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+
+        }
 
 
         return super.onOptionsItemSelected(item);
@@ -364,7 +506,10 @@ public class MainActivity extends AppCompatActivity {
     private void DbInterface() {
         if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 2);
-        } else {
+            if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
+                return;
+            }
+        }
             NameOfFile(new NameCallback() {
                 @Override
                 public void onNameEntered(String fileName) {
@@ -372,7 +517,7 @@ public class MainActivity extends AppCompatActivity {
                     if (!fileName.isEmpty()) {
                         // Prossiga com a lógica, como salvar o arquivo Excel
                         FinalFileName = fileName;
-                        // Sua lógica para criar o arquivo Excel aqui...
+                        // execute service
                         executorService = Executors.newSingleThreadExecutor();
 
                         // Inicializa o handler para a thread principal
@@ -383,7 +528,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
             });
-        }
     }
 
     private void NameOfFile(NameCallback callback) {
@@ -436,28 +580,35 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == 2 && resultCode == RESULT_OK) {
-            Uri uri = data.getData();
-            if (uri != null) {
-                // Use DocumentsContract APIs to create a file in the selected directory
-              //  String documentId = DocumentsContract.getTreeDocumentId(uri);
-                File externalDbPath = new File(getExternalFilesDir(null), "BackupDatabase");
+            final androidx.appcompat.app.AlertDialog loadingDialog = init_win("Connecting to database", "Coping data.");
+            executorService.execute(() -> {
+                Uri uri = data.getData();
+                if (uri != null) {
+                    // Use DocumentsContract APIs to create a file in the selected directory
+                    //  String documentId = DocumentsContract.getTreeDocumentId(uri);
+                    File externalDbPath = new File(getExternalFilesDir(null), "BackupDatabase");
 
-                if (!externalDbPath.exists()) {
-                    externalDbPath.mkdirs();
-                }
+                    if (!externalDbPath.exists()) {
+                        externalDbPath.mkdirs();
+                    }
 
-                String dbPath = externalDbPath.getAbsolutePath();
+                    String dbPath = externalDbPath.getAbsolutePath();
 
-                // You would then use this ID to create a new file in the selected directory
-               // Toast.makeText(this, "Directory selected: " + documentId, Toast.LENGTH_SHORT).show();
-                if (DB.createExternalDb(selectedTables, dbPath, FinalFileName)) {
-                    Toast.makeText(MainActivity.this, "Success to create Backup in android/data", Toast.LENGTH_LONG).show();
+                    final boolean status = DB.createExternalDb(selectedTables, dbPath, FinalFileName);
+
+                    mainHandler.post(() -> {
+                        // You would then use this ID to create a new file in the selected directory
+                        // Toast.makeText(this, "Directory selected: " + documentId, Toast.LENGTH_SHORT).show();
+                        if (status) {
+                            Toast.makeText(MainActivity.this, "Success to create Backup in android/data", Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Error to create Backup in android/data", Toast.LENGTH_LONG).show();
+                        }
+                        selectedTables.clear();
+                        loadingDialog.dismiss();
+                    });
                 }
-                else {
-                    Toast.makeText(MainActivity.this, "Error to create Backup in android/data", Toast.LENGTH_LONG).show();
-                }
-                selectedTables.clear();
-            }
+            });
         }
     }
 
@@ -601,6 +752,10 @@ public class MainActivity extends AppCompatActivity {
             builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
+                    if (DB.defaultDB == null || DB.defaultDB.isEmpty()) {
+                        noDatabase("Database not selected");
+                        return;
+                    }
                     String value = input.getText().toString();
                     if (value.isEmpty()) {
                         System.out.println("vazio");
@@ -619,7 +774,7 @@ public class MainActivity extends AppCompatActivity {
                           long num = Long.parseLong(input.getText().toString());
                           System.out.println(num);
                         dialogInterface.dismiss();
-                        int existe = DB.check_id(code_value, num, MainActivity.this);
+                        final int existe = DB.check_id(code_value, num, MainActivity.this);
                         if (existe == 0) {
                             if (DB.insertData(code_value, num) > 0) {
                                 Toast.makeText(MainActivity.this, "Sucess to insert data to database", Toast.LENGTH_SHORT).show();
@@ -640,6 +795,10 @@ public class MainActivity extends AppCompatActivity {
         final String quantidade = quantity.getText().toString();
         if (id.isEmpty() || quantidade.isEmpty()) {
             Toast.makeText(this, "É necessario preencher todos os campos", Toast.LENGTH_LONG).show();
+            return;
+        }
+        else if (DB.defaultDB == null || DB.defaultDB.isEmpty()) {
+            noDatabase("Database not selected");
             return;
         }
         add_to_db(id, Long.parseLong(quantidade));

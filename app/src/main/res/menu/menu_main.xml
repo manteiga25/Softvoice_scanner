@@ -26,13 +26,30 @@
             android:orderInCategory="5"
             android:showAsAction="never" />
         <item
+            android:id="@+id/Unifydatabase"
+            android:title="Unify database"
+            android:orderInCategory="6"
+            android:showAsAction="never" />
+        <item
+            android:id="@+id/BackupMenu"
+            android:title="Backup"
+                android:orderInCategory="7" >
+        <menu>
+            <item
             android:id="@+id/ImportDatabase"
             android:title="Import database"
-            android:orderInCategory="6"
+            android:orderInCategory="0"
             android:showAsAction="never" />
         <item
             android:id="@+id/ExportDatabase"
             android:title="Export database"
-            android:orderInCategory="7"
+            android:orderInCategory="1"
+            android:showAsAction="never" />
+        </menu>
+        </item>
+        <item
+            android:id="@+id/RawDatabase"
+            android:title="Raw SQL control"
+            android:orderInCategory="8"
             android:showAsAction="never" />
 </menu>

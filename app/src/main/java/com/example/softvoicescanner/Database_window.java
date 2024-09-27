@@ -2,8 +2,10 @@ package com.example.softvoicescanner;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
@@ -24,6 +26,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -36,7 +39,6 @@ import android.Manifest;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.example.softvoicescanner.databinding.ActivityDatabaseWindowBinding;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -48,23 +50,25 @@ import java.util.concurrent.Executors;
 
 public class Database_window extends AppCompatActivity {
 
-    private ActivityDatabaseWindowBinding binding;
     private Database DB;
-    private ArrayList<String> data, rawDataExcel;  // Supõe-se que data já foi inicializado com dados
+    private ArrayList<String> data;  // Supõe-se que data já foi inicializado com dados
+    private ArrayList<Button> buttonBarra = new ArrayList<Button>();
     private TableLayout tabela;
+    private LinearLayout buttonContainer;
     private TextView[] productId, quantity;
     private ExecutorService executorService, executorServiceExcel;
     private Handler mainHandler, excelHandler;
     private String FinalFileName;
     private String currentFilter = "", LastFilter = "";
     private EditText search;
-    private Button buttonExlude;
+    private Button buttonExlude, currentButonPage;
+    private long offset = 0;
 
     public interface NameCallback {
         void onNameEntered(String fileName);
     }
 
-    protected ArrayList<String> fetch_data() {
+  /*  protected ArrayList<String> fetch_data() {
         if (data != null) {
             data.clear();
         }
@@ -88,6 +92,63 @@ public class Database_window extends AppCompatActivity {
             while (cursor.moveToNext());
         }
         cursor.close();
+        return list;
+    } */
+
+    private boolean fetch_data() {
+        ArrayList<String> list = new ArrayList<>();
+
+        final String offset_str = String.valueOf(offset);
+
+        Cursor cursor;
+        if (currentFilter.isEmpty()) {
+            cursor = DB.fetchDataCursor(offset_str, 100);
+        }
+        else {
+            cursor = DB.fetchFilterData(currentFilter, offset_str, 100);
+        }
+
+            if (cursor.moveToFirst()) {
+                do {
+                    // Extrair os dados do cursor
+                    list.add(cursor.getString(0));
+                    list.add(cursor.getString(1));
+                } while (cursor.moveToNext());
+            }
+
+            data = list;
+
+            if (cursor.getCount() != 100) {
+                cursor.close();
+                offset = 0; // reset the offset for the next iteration
+                return false;
+            }
+            else {
+                return true;
+        }
+        }
+
+    private ArrayList<String> fetch_dataExcel(final long ExcelOffset) {
+        ArrayList<String> list = new ArrayList<>();
+
+        final String offset_str = String.valueOf(ExcelOffset);
+
+        Cursor cursor;
+        if (currentFilter.isEmpty()) {
+            cursor = DB.fetchDataCursor(offset_str, 1000);
+        }
+        else {
+            cursor = DB.fetchFilterData(currentFilter, offset_str, 1000);
+        }
+
+        if (cursor.moveToFirst()) {
+            do {
+                // Extrair os dados do cursor
+                list.add(cursor.getString(0));
+                list.add(cursor.getString(1));
+            } while (cursor.moveToNext());
+        }
+
         return list;
     }
 
@@ -181,7 +242,7 @@ public class Database_window extends AppCompatActivity {
             Glide.with(this)
                     .asGif()
                     .load(R.drawable.loadb)
-               //     .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                    .diskCacheStrategy(DiskCacheStrategy.DATA)
                  //   .override(200, 200)  // Define um tamanho específico
                     .into(gif);
 
@@ -191,13 +252,14 @@ public class Database_window extends AppCompatActivity {
             return progressDialog;
         }
 
-        private void searchItem() {
-         /*       for (int itens = 2; itens < tabela.getChildCount(); itens++) {
-                    tabela.removeViewAt(itens);
-                    //tabela.removeViewAt(itens+1);
-                } */
+        private void destroyTable() {
+            if (data != null) {
+                data.clear();
+            }
             tabela.removeAllViews();
+        }
 
+        private void createColumns() {
             TableRow newRow = new TableRow(this);
 
             TextView constProductId = new TextView(this);
@@ -225,6 +287,21 @@ public class Database_window extends AppCompatActivity {
 
             tabela.addView(newRow);
             tabela.addView(separator);
+        }
+
+        private void searchItem() {
+            destroyTable();
+            destroyBar();
+            CreateBar();
+
+            createColumns();
+
+            if (buttonBarra == null || buttonBarra.isEmpty()) {
+                Toast.makeText(Database_window.this, "No data found", Toast.LENGTH_LONG).show();
+                return;
+            }
+            Button buttonBarraTmp = buttonBarra.get(0);
+            buttonBarraTmp.setBackgroundColor(Color.parseColor("#6750A4"));
 
 
                 startFetchingData();
@@ -260,6 +337,13 @@ public class Database_window extends AppCompatActivity {
         search = findViewById(R.id.Filter);
         ImageButton searchButton = findViewById(R.id.SearchButton);
 
+        buttonContainer = findViewById(R.id.buttonContainer);
+
+        CreateBar();
+
+    //    Button buttonBarraTmp = buttonBarra.get(0);
+      //  buttonBarraTmp.setBackgroundColor(Color.parseColor("#6750A4"));
+
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -267,7 +351,10 @@ public class Database_window extends AppCompatActivity {
                 if (currentFilter.equals(LastFilter)) {
                     return;
                 }
+                offset = 0;
                 LastFilter = currentFilter;
+
+                createColumns();
 
                 searchItem();
             }
@@ -286,6 +373,81 @@ public class Database_window extends AppCompatActivity {
 
     }
 
+    private void destroyBar() {
+        if (buttonBarra != null) {
+            buttonContainer.removeAllViews();
+            buttonBarra.clear();
+        }
+    }
+
+    private void CreateBar() {
+
+        final double numberOfPages;
+
+        System.out.println("current filt: " + currentFilter);
+
+        if (currentFilter.isEmpty()) {
+            numberOfPages = DB.numberOfRows();
+        }
+        else {
+            numberOfPages = DB.numberOfRowsFilter(currentFilter);
+        }
+
+        for (double buttonIdx = 0; buttonIdx < numberOfPages; buttonIdx++) {
+            Button buttonBar = new Button(this);
+            buttonBar.setText(String.valueOf((long) buttonIdx));
+            buttonBar.setPadding(16, 16, 16, 16);
+            buttonBar.setLayoutParams(new LinearLayout.LayoutParams(
+                    80,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+
+            buttonBar.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    final long numberPage = Long.parseLong(buttonBar.getText().toString());
+
+                    final long tmpOffset = numberPage * 100;
+
+                    if (tmpOffset == offset) {
+                        System.out.println("igual");
+                        return;
+                    }
+
+                    offset = tmpOffset;
+
+                    System.out.println(buttonBar.getSolidColor());
+
+                    currentButonPage.setBackgroundColor(Color.parseColor("#FFBDBDBD"));
+
+                    currentButonPage = buttonBar;
+
+                    buttonBar.setBackgroundColor(Color.parseColor("#6750A4"));
+
+                    destroyTable();
+
+                    createColumns();
+
+                    startFetchingData();
+
+                }
+
+                });
+
+            buttonContainer.addView(buttonBar);
+            buttonBarra.add(buttonBar);
+        }
+        if (buttonBarra == null) {
+            System.out.println("nada");
+            return;
+        }
+        if (!buttonBarra.isEmpty()) {
+            currentButonPage = buttonBarra.get(0);
+        }
+        System.out.println("feito");
+    }
+
     private void startFetchingData() {
         // Mostra a janela de carregamento antes de iniciar a busca
         final androidx.appcompat.app.AlertDialog loadingDialog = init_win("Connecting to database", "Fetching data.");
@@ -294,7 +456,7 @@ public class Database_window extends AppCompatActivity {
         executorService.execute(() -> {
             try {
                 // Realiza a busca no banco de dados
-                data = fetch_data();
+                boolean t = fetch_data();
                 System.out.println("fetched");
 
                 // Retorna para a thread principal para atualizar a UI
@@ -302,7 +464,7 @@ public class Database_window extends AppCompatActivity {
                     try {
                         // Atualiza a tabela com os dados buscados
                         System.out.println("creating");
-                        create_table(loadingDialog);
+                    //    create_table(loadingDialog);
                         System.out.println("created");
                     } catch (Exception e) {
                         System.out.println("Error while creating table: " + e.getMessage());
@@ -310,7 +472,7 @@ public class Database_window extends AppCompatActivity {
                     } finally {
                         // Garante que o fechamento do dialog seja feito na UI Thread
                         runOnUiThread(() -> {
-                         //   create_table(loadingDialog);
+                            create_table(loadingDialog);
                             if (loadingDialog.isShowing()) {
                                 System.out.println("Dismissing loading dialog");
                                 loadingDialog.dismiss();
@@ -549,23 +711,25 @@ public class Database_window extends AppCompatActivity {
                     .setNegativeButton("No", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            final String tmp_filter = currentFilter;
+                         //   final String tmp_filter = currentFilter;
+                            LastFilter = currentFilter;
                             currentFilter = "";
-                            rawDataExcel = fetch_data();
-                            currentFilter = tmp_filter;
+                         //   rawDataExcel = fetch_data();
+                          //  boolean t = fetch_data();
                             ExcelInterface();
+                       //     currentFilter = tmp_filter;
+                         //   System.out.println("terminado " + currentFilter);
                         }
                     })
                     .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            rawDataExcel = data;
+                            LastFilter = currentFilter;
                             ExcelInterface();
                         }
                     }).show();
         }
         else {
-            rawDataExcel = data;
             ExcelInterface();
         }
 
@@ -642,16 +806,31 @@ public class Database_window extends AppCompatActivity {
             // Realize a busca no banco de dados
             ExcelDB excelDB = new ExcelDB(Database_window.this);
             excelDB.FileName = FinalFileName;
-            excelDB.GenerateExcel(rawDataExcel, uri);
+            boolean HasData = true;
+            long offset = 0;
+        //    excelDB.GenerateExcel(rawDataExcel, uri);
+            excelDB.InitExcel();
+            while (HasData) {
+                final ArrayList<String> dataForExcel = fetch_dataExcel(offset);
+                if (dataForExcel.isEmpty()) {
+                    HasData = false;
+                }
+                else {
+                    excelDB.WriteExcel(dataForExcel);
+                    offset += 1000;
+                }
+            }
+            excelDB.FlushExcel(uri);
+
 
             // Retorna para a thread principal para atualizar a UI
             excelHandler.post(() -> {
-                // Atualiza a tabela com os dados buscados
                 excelDB.checkExcel();
+                currentFilter = LastFilter;
 
 
                 // Fecha a janela de carregamento
-                if (loadingExcel != null && loadingExcel.isShowing()) {
+                if (loadingExcel.isShowing()) {
                     System.out.println("yupi");
                     loadingExcel.dismiss();
                 }

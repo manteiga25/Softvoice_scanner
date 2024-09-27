@@ -22,28 +22,33 @@ public class ExcelDB {
 
     public String FileName;
 
+    private int ExcelCursor;
+
+    private XSSFWorkbook workbook;
+
+    private XSSFSheet sheet;
+
     public ExcelDB(Context context) {
         this.context = context;
     }
 
-    public void GenerateExcel(ArrayList<String> data, android.net.Uri uri) {
+    public void InitExcel() {
+        workbook = new XSSFWorkbook();
+        sheet = workbook.createSheet("Banco de dados");
 
-        XSSFWorkbook workbook = new XSSFWorkbook();
-        XSSFSheet sheet = workbook.createSheet("Banco de dados");
-
-        // Obtenha os dados do SQLite
-
-        // Criar a linha de cabeçalhos
         Row headerRow = sheet.createRow(0);
         Cell headerCell1 = headerRow.createCell(0);
         headerCell1.setCellValue("Product ID");
         Cell headerCell2 = headerRow.createCell(1);
         headerCell2.setCellValue("Quantity");
 
-        // Preencher o Excel com os dados
-        int rowCount = 1; // Começar a partir da segunda linha, pois a primeira é o cabeçalho
+        ExcelCursor = 1;
+
+    }
+
+    public void WriteExcel(final ArrayList<String> data) {
         for (int index = 0; index < data.size(); index += 2) {
-            Row row = sheet.createRow(rowCount++);
+            Row row = sheet.createRow(ExcelCursor++);
 
             Cell cell1 = row.createCell(0);
             cell1.setCellValue(data.get(index));  // Coloque o valor do produto
@@ -52,14 +57,16 @@ public class ExcelDB {
             cell2.setCellValue(data.get(index+1));   // Coloque o valor da quantidade
 
         }
+    }
 
+    public void FlushExcel(android.net.Uri uri) {
         try {
-        // Criar o arquivo Excel no armazenamento externo
+            // Criar o arquivo Excel no armazenamento externo
 
             System.out.println("path " + uri);
 
-        DocumentFile pickedDir = DocumentFile.fromTreeUri(context, uri);
-        DocumentFile file = pickedDir.createFile("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", FileName + ".xlsx");
+            DocumentFile pickedDir = DocumentFile.fromTreeUri(context, uri);
+            DocumentFile file = pickedDir.createFile("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", FileName + ".xlsx");
 
             OutputStream outputStream = context.getContentResolver().openOutputStream(file.getUri());
             workbook.write(outputStream);

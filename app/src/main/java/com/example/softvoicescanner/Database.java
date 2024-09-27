@@ -7,18 +7,15 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.net.Uri;
-import android.util.Log;
 import android.widget.Toast;
+
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class Database extends SQLiteOpenHelper {
 
@@ -38,6 +35,8 @@ public class Database extends SQLiteOpenHelper {
 
     public boolean createExternalDb(final ArrayList<String> tables, final String DbPath, String DbName) {
         try {
+
+            long offset = 0;
 
             System.out.println("name " + DbName);
 
@@ -64,27 +63,57 @@ public class Database extends SQLiteOpenHelper {
             Cursor cursor;
 
             for (final String table : tables) {
-                System.out.println(table);
-                cursor = existingDb.rawQuery("SELECT * FROM " + table, null);
-                if (cursor == null) {
-                    System.out.println("null");
-                    return false;
-                }
                 newDb.execSQL("CREATE TABLE IF NOT EXISTS " + table + " (product_id TEXT PRIMARY KEY NOT NULL, quantidade BIGINT NOT NULL);");
-                if (cursor.moveToFirst()) {
-                    do {
-                        ContentValues contentValues = new ContentValues();
-                        contentValues.put("product_id", cursor.getString(0));
-                        contentValues.put("quantidade", cursor.getString(1));
+                System.out.println(table);
+                boolean HasData = true;
+                while (HasData) {
+                    cursor = existingDb.rawQuery("SELECT * FROM " + table + " LIMIT 1000 OFFSET ?", new String[]{String.valueOf(offset)});
+                    if (cursor == null) {
+                        System.out.println("null");
+                        return false;
+                    }
+                    if (cursor.moveToFirst()) {
+                        do {
+                            ContentValues contentValues = new ContentValues();
+                            contentValues.put("product_id", cursor.getString(0));
+                            contentValues.put("quantidade", cursor.getString(1));
 
-                        newDb.insert(table, null, contentValues);
+                            newDb.insert(table, null, contentValues);
                         }
                         while (cursor.moveToNext());
-                    cursor.close();
                     }
+                    if (cursor.getCount() < 1000) {
+                        HasData = false;
+                    }
+                    offset += 1000;
+                    cursor.close();
+                }
             }
 
             newDb.close();
+            return true;
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean unifyDB(final ArrayList<String> tables, final String tableDst) {
+        try {
+            for (final String table : tables) {
+                database.execSQL("UPDATE " + tableDst + " SET quantidade = quantidade + " +
+                        "(SELECT " + table + ".quantidade FROM " + table +
+                        " WHERE " + table + ".product_id = " + tableDst + ".product_id)" +
+                        " WHERE EXISTS (SELECT 1 FROM " + table +
+                        " WHERE " + table + ".product_id = " + tableDst + ".product_id);");
+
+                database.execSQL("INSERT INTO " + tableDst + " (product_id, quantidade) " +
+                        "SELECT t2.product_id, t2.quantidade " +
+                        "FROM " + table + " t2 " +
+                        "LEFT JOIN " + tableDst + " t1 ON t1.product_id = t2.product_id " +
+                        "WHERE t1.product_id IS NULL;");
+            }
             return true;
         }
         catch (Exception e) {
@@ -227,8 +256,62 @@ public class Database extends SQLiteOpenHelper {
         return database.insert(defaultDB, null, values);
     }
 
-    public Cursor fetchFilterData(final String id) {
-        return database.rawQuery("Select * from " + defaultDB + " WHERE product_id LIKE ?", new String[]{"%" + id + "%"});
+    public Cursor fetchFilterData(final String id, final String offset, final int limit) {
+        return database.rawQuery("Select * from " + defaultDB + " WHERE product_id LIKE ? LIMIT ? OFFSET ?", new String[]{"%" + id + "%", String.valueOf(limit), offset});
+    }
+
+   /* public double numberOfRows() {
+        long offset = 0;
+        double numberOfItens = 0.0;
+        boolean HasData = true;
+        while (HasData) {
+            Cursor cursor = database.rawQuery("Select * from " + defaultDB + " LIMIT 1000 OFFSET ?", new String[]{String.valueOf(offset)});
+            //   final int tmp_value = cursor.getCount();
+            if (cursor == null) {
+                System.err.println("error");
+            }
+            final int DataLen = cursor.getCount();
+            if (DataLen > 0) {
+             //   final int tmp_value = cursor.getInt(0);
+                numberOfItens += DataLen;
+                offset += 1000;
+            }
+            else {
+                HasData = false;
+            }
+            System.out.println(DataLen);
+            cursor.close();
+        }
+        return numberOfItens / 100.0;
+    } */
+
+    public double numberOfRows() {
+        double numberOfItens = 0.0;
+            Cursor cursor = database.rawQuery("Select count(*) from " + defaultDB, null);
+            if (cursor == null) {
+                System.err.println("error");
+                return -1;
+            }
+        if (cursor.moveToFirst()) {
+            final long tmp_value = cursor.getLong(0);
+            numberOfItens = tmp_value / 100.0;
+        }
+            cursor.close();
+        return numberOfItens;
+    }
+
+    public double numberOfRowsFilter(final String filter) {
+        double numberOfItens = 0.0;
+        Cursor cursor = database.rawQuery("Select count(*) from " + defaultDB + " WHERE product_id LIKE ?", new String[]{"%" + filter + "%"});
+        //   final int tmp_value = cursor.getCount();
+        if (cursor.moveToFirst()) {
+            final int tmp_value = cursor.getInt(0);
+            System.out.println(tmp_value);
+            numberOfItens = tmp_value / 100.0;
+            System.out.println(numberOfItens);
+        }
+        cursor.close();
+        return numberOfItens;
     }
 
     public boolean insertAllData(String[] prod_id, long[] quantidade) {
@@ -308,6 +391,10 @@ public class Database extends SQLiteOpenHelper {
 
     public Cursor fetchAllDataCursor() {
         return database.rawQuery("Select * from " + defaultDB, null);
+    }
+
+    public Cursor fetchDataCursor(final String currentCursor, final int limit) {
+        return database.rawQuery("Select * from " + defaultDB + " LIMIT ? OFFSET ?", new String[]{String.valueOf(limit), currentCursor});
     }
 
     public int updateData(String oldProduct_id, String newProductId, long newQuantidade) {

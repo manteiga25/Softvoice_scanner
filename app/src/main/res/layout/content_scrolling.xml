@@ -33,28 +33,6 @@
                 android:visibility="invisible"
                 android:textSize="14sp" />
 
-            <Button
-                android:id="@+id/ImportDB"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="4"
-                android:gravity="center_horizontal"
-                android:padding="10sp"
-                android:text="Import database"
-                android:textColor="@color/white"
-                android:textSize="14sp" />
-
-            <Button
-                android:id="@+id/ExportDB"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="4"
-                android:gravity="center_horizontal"
-                android:padding="10sp"
-                android:text="Export database"
-                android:textColor="@color/white"
-                android:textSize="14sp" />
-
         </TableRow>
 
     </TableLayout>
@@ -87,6 +65,19 @@
                 android:textColor="@color/white" />
 
         </TableRow>
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/white"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:id="@+id/buttonContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
 
     </TableLayout>
 
